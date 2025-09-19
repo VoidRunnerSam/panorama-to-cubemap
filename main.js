@@ -1,5 +1,7 @@
-const canvas = document.createElement('canvas');
-const ctx = canvas.getContext('2d');
+const finalCanvas = document.createElement('canvas');
+const finalCtx = finalCanvas.getContext('2d');
+const finalContainer = document.getElementById('finalOutput');
+const downloadButton = document.getElementById('downloadButton');
 
 class RadioInput {
   constructor(name, onChange) {
@@ -30,33 +32,6 @@ class Input {
   }
 }
 
-class CubeFace {
-  constructor(faceName) {
-    this.faceName = faceName;
-
-    this.anchor = document.createElement('a');
-    this.anchor.style.position='absolute';
-    this.anchor.title = faceName;
-
-    this.img = document.createElement('img');
-    this.img.style.filter = 'blur(4px)';
-
-    this.anchor.appendChild(this.img);
-  }
-
-  setPreview(url, x, y) {
-    this.img.src = url;
-    this.anchor.style.left = `${x}px`;
-    this.anchor.style.top = `${y}px`;
-  }
-
-  setDownload(url, fileExtension) {
-    this.anchor.href = url;
-    this.anchor.download = `${this.faceName}.${fileExtension}`;
-    this.img.style.filter = '';
-  }
-}
-
 function removeChildren(node) {
   while (node.firstChild) {
     node.removeChild(node.firstChild);
@@ -69,6 +44,8 @@ const mimeType = {
 };
 
 function getDataURL(imgData, extension) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
   canvas.width = imgData.width;
   canvas.height = imgData.height;
   ctx.putImageData(imgData, 0, 0);
@@ -84,6 +61,15 @@ const dom = {
 };
 
 dom.imageInput.addEventListener('change', loadImage);
+downloadButton.addEventListener('click', () => {
+  const url = finalCanvas.toDataURL(mimeType[settings.format.value]);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cubemap.${settings.format.value}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
 
 const settings = {
   cubeRotation: new Input('cubeRotation', loadImage),
@@ -92,12 +78,12 @@ const settings = {
 };
 
 const facePositions = {
-  pz: {x: 1, y: 1},
-  nz: {x: 3, y: 1},
-  px: {x: 2, y: 1},
-  nx: {x: 0, y: 1},
-  py: {x: 1, y: 0},
-  ny: {x: 1, y: 2}
+  pz: {x: 1, y: 1}, // Front
+  nz: {x: 2, y: 0}, // Back
+  px: {x: 2, y: 1}, // Right
+  nx: {x: 0, y: 1}, // Left
+  py: {x: 1, y: 0}, // Top
+  ny: {x: 0, y: 0} // Bottom
 };
 
 function loadImage() {
@@ -108,80 +94,64 @@ function loadImage() {
   }
 
   const img = new Image();
-
   img.src = URL.createObjectURL(file);
 
   img.addEventListener('load', () => {
-    const {width, height} = img;
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = img.width;
+    canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(0, 0, width, height);
-
+    const data = ctx.getImageData(0, 0, img.width, img.height);
     processImage(data);
   });
 }
 
-let finished = 0;
+let finishedCount = 0;
 let workers = [];
+let faceData = {};
 
 function processImage(data) {
   removeChildren(dom.faces);
   dom.generating.style.visibility = 'visible';
+  finishedCount = 0;
+  workers.forEach(worker => worker.terminate());
+  workers = [];
+  faceData = {};
 
-  for (let worker of workers) {
-    worker.terminate();
-  }
+  // Update final canvas dimensions
+  const faceSize = 1024;
+  finalCanvas.width = 3 * faceSize;
+  finalCanvas.height = 2 * faceSize;
+  finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
+  finalContainer.appendChild(finalCanvas);
 
   for (let [faceName, position] of Object.entries(facePositions)) {
-    renderFace(data, faceName, position);
+    const worker = new Worker('convert.js');
+    workers.push(worker);
+
+    worker.onmessage = ({data: imageData}) => {
+      faceData[faceName] = imageData;
+      finishedCount++;
+      if (finishedCount === 6) {
+        stitchFaces();
+      }
+    };
+
+    worker.postMessage({
+      data: data,
+      face: faceName,
+      rotation: Math.PI * settings.cubeRotation.value / 180,
+      interpolation: settings.interpolation.value,
+    });
   }
 }
 
-function renderFace(data, faceName, position) {
-  const face = new CubeFace(faceName);
-  dom.faces.appendChild(face.anchor);
-
-  const options = {
-    data: data,
-    face: faceName,
-    rotation: Math.PI * settings.cubeRotation.value / 180,
-    interpolation: settings.interpolation.value,
-  };
-
-  const worker = new Worker('convert.js');
-
-  const setDownload = ({data: imageData}) => {
-    const extension = settings.format.value;
-
-    getDataURL(imageData, extension)
-      .then(url => face.setDownload(url, extension));
-
-    finished++;
-
-    if (finished === 6) {
-      dom.generating.style.visibility = 'hidden';
-      finished = 0;
-      workers = [];
-    }
-  };
-
-  const setPreview = ({data: imageData}) => {
-    const x = imageData.width * position.x;
-    const y = imageData.height * position.y;
-
-    getDataURL(imageData, 'jpg')
-      .then(url => face.setPreview(url, x, y));
-
-    worker.onmessage = setDownload;
-    worker.postMessage(options);
-  };
-
-  worker.onmessage = setPreview;
-  worker.postMessage(Object.assign({}, options, {
-    maxWidth: 200,
-    interpolation: 'linear',
-  }));
-
-  workers.push(worker);
+function stitchFaces() {
+  const faceSize = 1024;
+  for (let [faceName, position] of Object.entries(facePositions)) {
+    finalCtx.putImageData(faceData[faceName], position.x * faceSize, position.y * faceSize);
+  }
+  dom.generating.style.visibility = 'hidden';
+  downloadButton.style.display = 'block'; // Show download button
 }
