@@ -1,7 +1,6 @@
 const finalContainer = document.getElementById('finalOutput');
 const finalCanvas = document.getElementById('finalCanvas');
 const finalCtx = finalCanvas.getContext('2d');
-// const downloadButton = document.getElementById('downloadButton');
 
 class RadioInput {
   constructor(name, onChange) {
@@ -61,15 +60,6 @@ const dom = {
 };
 
 dom.imageInput.addEventListener('change', loadImage);
-// downloadButton.addEventListener('click', () => {
-//   const url = finalCanvas.toDataURL(mimeType['png']); // Hardcoded 'png'
-//   const a = document.createElement('a');
-//   a.href = url;
-//   a.download = `cubemap.png`; // Hardcoded 'png'
-//   document.body.appendChild(a);
-//   a.click();
-//   document.body.removeChild(a);
-// });
 
 const facePositions = {
   pz: {x: 1, y: 1}, // Front
