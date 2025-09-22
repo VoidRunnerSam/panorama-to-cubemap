@@ -4,24 +4,7 @@
   <meta charset="utf-8">
   <meta name="description" content="Convert a 360° panorama to a cubemap.">
   <title>Panorama to Cubemap</title>
-  <style>
-    body {
-      margin: 1em auto;
-      max-width: 800px;
-    }
-    .settings > * {
-      margin-top: 12px;
-      margin-bottom: 12px;
-    }
-    #cubemap {
-      width: 800px;
-      height: 600px;
-      position: relative;
-      border: 1px solid #888;
-      background: #eee;
-      margin-top: 15px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">k
 </head>
 
 <body>
@@ -65,7 +48,9 @@
       </div>
     </section>
     <section>
-              <div id="finalOutput"></div>
+        <div id="finalOutput">
+          <canvas id="finalCanvas"></canvas>
+        </div>
         <button id="downloadButton">Download LOL</button>
     </section>
   </main>

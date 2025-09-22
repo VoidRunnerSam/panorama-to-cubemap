@@ -1,0 +1,16 @@
+    body {
+      margin: 1em auto;
+      max-width: 800px;
+    }
+    .settings > * {
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+    #finalOutput {
+        width: 50vw; /* Or a fixed pixel value */
+        /* Add other styling for the container if needed */
+    }
+
+    #finalCanvas {
+        width: 100%;
+    }

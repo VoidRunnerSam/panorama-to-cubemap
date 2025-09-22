@@ -1,6 +1,6 @@
-const finalCanvas = document.createElement('canvas');
-const finalCtx = finalCanvas.getContext('2d');
 const finalContainer = document.getElementById('finalOutput');
+const finalCanvas = document.getElementById('finalCanvas');
+const finalCtx = finalCanvas.getContext('2d');
 const downloadButton = document.getElementById('downloadButton');
 
 class RadioInput {
