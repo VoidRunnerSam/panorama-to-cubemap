@@ -154,8 +154,7 @@ const orientations = {
   }
 };
 
-function renderFace({data: readData, face, rotation, interpolation, maxWidth = Infinity}) {
-
+function renderFace({data: readData, face, rotation, interpolation}) {
   const faceWidth = 1024
   const faceHeight = 1024;
 

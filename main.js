@@ -1,7 +1,7 @@
 const finalContainer = document.getElementById('finalOutput');
 const finalCanvas = document.getElementById('finalCanvas');
 const finalCtx = finalCanvas.getContext('2d');
-const downloadButton = document.getElementById('downloadButton');
+// const downloadButton = document.getElementById('downloadButton');
 
 class RadioInput {
   constructor(name, onChange) {
@@ -61,21 +61,15 @@ const dom = {
 };
 
 dom.imageInput.addEventListener('change', loadImage);
-downloadButton.addEventListener('click', () => {
-  const url = finalCanvas.toDataURL(mimeType[settings.format.value]);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `cubemap.${settings.format.value}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-});
-
-const settings = {
-  cubeRotation: new Input('cubeRotation', loadImage),
-  interpolation: new RadioInput('interpolation', loadImage),
-  format: new RadioInput('format', loadImage),
-};
+// downloadButton.addEventListener('click', () => {
+//   const url = finalCanvas.toDataURL(mimeType['png']); // Hardcoded 'png'
+//   const a = document.createElement('a');
+//   a.href = url;
+//   a.download = `cubemap.png`; // Hardcoded 'png'
+//   document.body.appendChild(a);
+//   a.click();
+//   document.body.removeChild(a);
+// });
 
 const facePositions = {
   pz: {x: 1, y: 1}, // Front
@@ -112,14 +106,11 @@ let workers = [];
 let faceData = {};
 
 function processImage(data) {
-  removeChildren(dom.faces);
-  dom.generating.style.visibility = 'visible';
   finishedCount = 0;
   workers.forEach(worker => worker.terminate());
   workers = [];
   faceData = {};
 
-  // Update final canvas dimensions
   const faceSize = 1024;
   finalCanvas.width = 3 * faceSize;
   finalCanvas.height = 2 * faceSize;
@@ -129,7 +120,6 @@ function processImage(data) {
   for (let [faceName, position] of Object.entries(facePositions)) {
     const worker = new Worker('convert.js');
     workers.push(worker);
-
     worker.onmessage = ({data: imageData}) => {
       faceData[faceName] = imageData;
       finishedCount++;
@@ -137,12 +127,11 @@ function processImage(data) {
         stitchFaces();
       }
     };
-
     worker.postMessage({
       data: data,
       face: faceName,
-      rotation: Math.PI * settings.cubeRotation.value / 180,
-      interpolation: settings.interpolation.value,
+      rotation: Math.PI * 180 / 180, // Hardcoded rotation
+      interpolation: 'lanczos', // Hardcoded interpolation
     });
   }
 }
@@ -152,6 +141,4 @@ function stitchFaces() {
   for (let [faceName, position] of Object.entries(facePositions)) {
     finalCtx.putImageData(faceData[faceName], position.x * faceSize, position.y * faceSize);
   }
-  dom.generating.style.visibility = 'hidden';
-  downloadButton.style.display = 'block'; // Show download button
 }
